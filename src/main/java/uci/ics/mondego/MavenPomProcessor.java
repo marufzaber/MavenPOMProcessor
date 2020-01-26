@@ -60,9 +60,13 @@ public class MavenPomProcessor {
 			
 			MavenXpp3Reader xpp3Reader = new MavenXpp3Reader();
 		    Model model = xpp3Reader.read(reader);
+
 		    Build build = model.getBuild();
-		    
-		    List<Plugin> oldPlugins = build.getPlugins();
+		    List<Plugin> oldPlugins = new ArrayList<Plugin>();
+		    if (build != null) {
+		    	oldPlugins = build.getPlugins();
+		    }		
+		    		
 		    List<Dependency> oldDependencies = model.getDependencies();
 		    
 	    	for( int i = 0; i < oldPlugins.size(); i++) {

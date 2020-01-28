@@ -29,20 +29,24 @@ public class MavenPomProcessor {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		
 		if(args.length < 3) {
 			logger.error(
-					"Insufficient arguments. Please pass 1. project directory 2. name of the library 3. version number");
+					"Insufficient arguments. Please pass : "
+					+ "i) project directory "
+					+ "ii) name of the library "
+					+ "iii) version number");
 		}
 		
 		String projectLocation = args[0];
 		String dependencyName = args[1];
 		String version = args[2];
+
 		List<String> pomLocations = scanPOMFiles(projectLocation);
 		
 		for (int i = 0; i < pomLocations.size(); i++) {
 			updateVersion(dependencyName, version, pomLocations.get(i));
 		}
-		
 	}
 	
 	private static void updateVersion(String dependencyName, String version, String pomLocation) {
@@ -56,18 +60,24 @@ public class MavenPomProcessor {
 			
 			MavenXpp3Reader xpp3Reader = new MavenXpp3Reader();
 		    Model model = xpp3Reader.read(reader);
+
 		    Build build = model.getBuild();
-		    
-		    List<Plugin> oldPlugins = build.getPlugins();
+		    List<Plugin> oldPlugins = new ArrayList<Plugin>();
+		    if (build != null) {
+		    	oldPlugins = build.getPlugins();
+		    }		
+		    		
 		    List<Dependency> oldDependencies = model.getDependencies();
 		    
 	    	for( int i = 0; i < oldPlugins.size(); i++) {
-		    	if (oldPlugins.get(i).getArtifactId().equals(dependencyName)) {
+	    		Plugin oldPlugin = oldPlugins.get(i);
+		    	if (oldPlugin.getArtifactId().equals(dependencyName)) {
+		    		
 		    		Writer writer = new FileWriter(pom2Location);
 		    		MavenXpp3Writer xpp3Writer = new MavenXpp3Writer();
 		    		oldPlugins.get(i).setVersion(version);
+		    		
 		    		build.setPlugins(oldPlugins);
-				    
 		    		// Update JUnit
 			    	for (int j = 0; j < oldDependencies.size(); j++) {
 				    	if (oldDependencies.get(j).getArtifactId().equals("junit")) {				    	

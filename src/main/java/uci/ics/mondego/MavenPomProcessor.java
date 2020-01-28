@@ -116,10 +116,7 @@ public class MavenPomProcessor {
 		} finally {
 		    try {
 				reader.close();
-				if (changed) {					
-					System.out.println("*******************************");
-					System.out.println(pomLocation + "is being updated");
-					System.out.println("*******************************");
+				if (changed) {
 					File pom = new File(pomLocation);
 					if(pom.delete()){
 						File newPom = new File(pom2Location);

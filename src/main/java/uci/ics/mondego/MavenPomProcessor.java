@@ -29,6 +29,7 @@ public class MavenPomProcessor {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		System.out.println(" ******* ");
 		
 		if(args.length < 3) {
 			logger.error(
@@ -44,41 +45,57 @@ public class MavenPomProcessor {
 
 		List<String> pomLocations = scanPOMFiles(projectLocation);
 		
+		// For each pom in the project update surefire
 		for (int i = 0; i < pomLocations.size(); i++) {
 			updateVersion(dependencyName, version, pomLocations.get(i));
 		}
 	}
 	
-	private static void updateVersion(String dependencyName, String version, String pomLocation) {
+	private static Plugin createPlugin (
+			String groupId, 
+			String artifactId, 
+			String version) {	
+		Plugin plugin = new Plugin();
+		plugin.setGroupId(groupId);
+		plugin.setArtifactId(artifactId);
 		
+		if(version != null) {
+			plugin.setVersion(version);
+		}
+		return plugin;
+	}
+	
+	private static void updateVersion(String dependencyName, String version, String pomLocation) {	
 		String pom2Location = pomLocation.substring(0, pomLocation.indexOf(".xml")) + "-temp.xml";
 		Reader reader = null;
 		boolean changed = false;
-		
+	    boolean found = false;
+	    
 		try {
 			reader = new FileReader(pomLocation);
 			
 			MavenXpp3Reader xpp3Reader = new MavenXpp3Reader();
+			MavenXpp3Writer xpp3Writer = new MavenXpp3Writer();
 		    Model model = xpp3Reader.read(reader);
-
+		    Writer writer = new FileWriter(pom2Location);
+		    
 		    Build build = model.getBuild();
 		    List<Plugin> oldPlugins = new ArrayList<Plugin>();
+		    
+		    // pom might not have a build at all
 		    if (build != null) {
 		    	oldPlugins = build.getPlugins();
 		    }		
 		    		
 		    List<Dependency> oldDependencies = model.getDependencies();
 		    
-	    	for( int i = 0; i < oldPlugins.size(); i++) {
+	    	for ( int i = 0; i < oldPlugins.size(); i++) {
 	    		Plugin oldPlugin = oldPlugins.get(i);
+	    		
 		    	if (oldPlugin.getArtifactId().equals(dependencyName)) {
-		    		
-		    		Writer writer = new FileWriter(pom2Location);
-		    		MavenXpp3Writer xpp3Writer = new MavenXpp3Writer();
+		    		found = true;		    		
 		    		oldPlugins.get(i).setVersion(version);
 		    		
-		    		build.setPlugins(oldPlugins);
-		    		// Update JUnit
 			    	for (int j = 0; j < oldDependencies.size(); j++) {
 				    	if (oldDependencies.get(j).getArtifactId().equals("junit")) {				    	
 				    		if(oldDependencies.get(j).getVersion() == null 
@@ -98,20 +115,34 @@ public class MavenPomProcessor {
 				    		}
 				    	}
 				    }
-		    		
-		    		model.setBuild(build);
-				    xpp3Writer.write( writer, model );
-				    
-				    writer.close();
+			    	
 				    changed = true;
 				    break;
 		    	}
 		    }
-		} catch (FileNotFoundException e) {
+	    	if (!found) {
+	    		oldPlugins.add(createPlugin("org.apache.maven.plugins", 
+	        			"maven-surefire-plugin", "2.19.1"));
+	    	    changed = true;
+	    	}
+	    	
+	    	// If pom does not have a build, then build one and add Surefire
+	    	if (build == null) {
+	    		build = new Build();
+	    	}
+
+	    	build.setPlugins(oldPlugins);
+    	    model.setBuild(build);
+    	    xpp3Writer.write( writer, model );
+    	    writer.close();
+
+	  	} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (XmlPullParserException e) {
+			e.printStackTrace();
+		} catch (NullPointerException e) {
 			e.printStackTrace();
 		} finally {
 		    try {
@@ -127,7 +158,7 @@ public class MavenPomProcessor {
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
-			}
+			} 
 		}
 	}
 	
